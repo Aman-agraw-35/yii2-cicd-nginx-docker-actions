@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: amanagraw35/yii-frontend:latest
+    ports:
+      - "8080:80"
+    networks:
+      - yii-network
+
+  backend:
+    image: amanagraw35/yii-backend:latest
+    ports:
+      - "8081:80"
+    networks:
+      - yii-network
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: yourpassword
+      MYSQL_DATABASE: yii_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - yii-network
+
+networks:
+  yii-network:
+
+volumes:
+  mysql-data:
