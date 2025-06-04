@@ -42,6 +42,12 @@ jobs:
       - name: Run Ansible Playbook
         run: |
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini ansible/playbook.yml
+                        - name: Copy docker-stack.yml to EC2
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
+          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "mkdir -p ~/yii-app"
+          scp -o StrictHostKeyChecking=no -i key.pem docker-stack.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/yii-app/
 
       - name: SSH and Deploy Docker Stack
         uses: appleboy/ssh-action@v1.0.0
@@ -50,13 +56,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            if [ -d ~/yii-app ]; then
-              cd ~/yii-app
-            else
-              echo "Directory ~/yii-app does not exist"
-              exit 1
-            fi
-
+            cd ~/yii-app || { echo "Directory ~/yii-app does not exist"; exit 1; }
+            
             if [ -f docker-stack.yml ]; then
               sudo docker pull amanagraw35/yii-frontend:latest
               sudo docker pull amanagraw35/yii-backend:latest
