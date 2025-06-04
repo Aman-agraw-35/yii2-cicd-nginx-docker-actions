@@ -39,6 +39,16 @@
         path: /etc/nginx/sites-enabled/default
         state: absent
 
+    - name: Test nginx config
+      command: nginx -t
+      register: nginx_test
+      ignore_errors: yes
+
+    - name: Fail if nginx config is invalid
+      fail:
+        msg: "NGINX configuration test failed"
+      when: nginx_test.rc != 0
+
     - name: Restart nginx
       service:
         name: nginx
