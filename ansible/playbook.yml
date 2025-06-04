@@ -1,17 +1,13 @@
-- name: Setup Docker Swarm and deploy Yii2 stack with NGINX container
+- name: Setup Docker Swarm and NGINX
   hosts: web
   become: true
-  vars:
-    stack_dir: /home/ubuntu/yii-docker-stack
-    nginx_conf_src: ../nginx.conf
-    nginx_conf_dest: "{{ stack_dir }}/nginx.conf"
-
   tasks:
     - name: Install required packages
       apt:
         name:
           - docker.io
           - docker-compose
+          - nginx
           - git
         state: present
         update_cache: yes
@@ -25,25 +21,41 @@
     - name: Initialize Docker Swarm (ignore if already initialized)
       shell: docker swarm init || true
 
-    - name: Create stack directory
+    - name: Copy nginx.conf
+      copy:
+        src: ../nginx.conf
+        dest: /etc/nginx/sites-available/yii2
+      notify: Reload nginx
+
+    - name: Enable nginx site
       file:
-        path: "{{ stack_dir }}"
-        state: directory
-        mode: '0755'
+        src: /etc/nginx/sites-available/yii2
+        dest: /etc/nginx/sites-enabled/yii2
+        state: link
+        force: yes
 
-    - name: Copy nginx.conf to stack directory
-      copy:
-        src: "{{ nginx_conf_src }}"
-        dest: "{{ nginx_conf_dest }}"
-        mode: '0644'
+    - name: Remove default nginx config
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
 
-    - name: Copy docker-stack.yml to stack directory
-      copy:
-        src: ../docker-stack.yml
-        dest: "{{ stack_dir }}/docker-stack.yml"
-        mode: '0644'
+    - name: Test nginx config
+      command: nginx -t
+      register: nginx_test
+      ignore_errors: yes
 
-    - name: Deploy Docker stack
-      shell: docker stack deploy -c docker-stack.yml yii-app
-      args:
-        chdir: "{{ stack_dir }}"
+    - name: Fail if nginx config is invalid
+      fail:
+        msg: "NGINX configuration test failed"
+      when: nginx_test.rc != 0
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+  handlers:
+    - name: Reload nginx
+      service:
+        name: nginx
+        state: reloaded
