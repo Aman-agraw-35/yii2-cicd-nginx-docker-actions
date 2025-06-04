@@ -1,0 +1,51 @@
+- name: Setup Docker Swarm and NGINX
+  hosts: web
+  become: true
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - nginx
+          - git
+        state: present
+        update_cache: yes
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Initialize Docker Swarm (ignore if already initialized)
+      shell: docker swarm init || true
+
+    - name: Copy nginx.conf
+      copy:
+        src: ../nginx.conf
+        dest: /etc/nginx/sites-available/yii2
+      notify: Reload nginx
+
+    - name: Enable nginx site
+      file:
+        src: /etc/nginx/sites-available/yii2
+        dest: /etc/nginx/sites-enabled/yii2
+        state: link
+        force: yes
+
+    - name: Remove default nginx config
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+  handlers:
+    - name: Reload nginx
+      service:
+        name: nginx
+        state: reloaded
