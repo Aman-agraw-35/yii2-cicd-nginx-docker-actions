@@ -1,7 +1,7 @@
 FROM yiisoftware/yii2-php:8.1-apache
 
 # Set Apache Document Root to backend/web
-RUN sed -i 's|/app/web|/app/backend/web|g' /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's|/app/backend/web|/app/web|g' /etc/apache2/sites-available/000-default.conf
 
 # Enable mod_rewrite and allow .htaccess
 RUN a2enmod rewrite && \
