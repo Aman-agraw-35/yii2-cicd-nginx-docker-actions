@@ -1,2 +1,32 @@
-node_modules
+# Git
 .git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Dependencies (will be installed during build)
+vendor/
+node_modules/
+
+# Runtime files
+runtime/cache/*
+runtime/logs/*
+web/assets/*
+
+# Development files
+.env.local
+.env.dev
+tests/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.d
