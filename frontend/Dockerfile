@@ -34,19 +34,17 @@ RUN chown -R www-data:www-data /app && \
     find /app -type f -exec chmod 644 {} \; && \
     chmod -R 777 /app/runtime /app/web/assets
 
-# Fix autoloader path in index.php if it exists - Enhanced version
+# Fix autoloader and config paths in index.php for Docker structure
 RUN if [ -f /app/web/index.php ]; then \
-        echo "Fixing autoloader paths in index.php..."; \
-        # Handle multiple common autoloader path patterns
-        sed -i "s|require(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
-        sed -i "s|require_once(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require_once(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
-        sed -i "s|require '\.\.\/\.\.\/vendor\/autoload\.php'|require __DIR__ . '/../vendor/autoload.php'|g" /app/web/index.php; \
-        sed -i "s|require_once '\.\.\/\.\.\/vendor\/autoload\.php'|require_once __DIR__ . '/../vendor/autoload.php'|g" /app/web/index.php; \
-        # If system Yii2 is available and local vendor doesn't exist, use system version
-        if [ -f /usr/share/yii2/vendor/autoload.php ] && [ ! -f /app/vendor/autoload.php ]; then \
-            sed -i "s|require.*vendor/autoload\.php.*|require('/usr/share/yii2/vendor/autoload.php');|g" /app/web/index.php; \
-        fi; \
-        echo "Autoloader paths fixed."; \
+        echo "=== Original index.php content ==="; \
+        cat /app/web/index.php; \
+        echo "=== Fixing paths for Docker structure ==="; \
+        # Fix all paths from ../../ to ../ since we're moving from backend/web/ to web/
+        sed -i 's|__DIR__ \. \x27/\.\./\.\./|__DIR__ \. \x27/../|g' /app/web/index.php; \
+        sed -i 's|__DIR__ \. "/\.\./\.\./|__DIR__ \. "/../|g' /app/web/index.php; \
+        sed -i 's|/\.\./\.\./|/../|g' /app/web/index.php; \
+        echo "=== Fixed index.php content ==="; \
+        cat /app/web/index.php; \
     fi
 
 # Debug: Show final autoloader setup
