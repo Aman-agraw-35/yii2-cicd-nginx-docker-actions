@@ -36,12 +36,15 @@ RUN chown -R www-data:www-data /app && \
 
 # Fix autoloader path in index.php if it exists
 RUN if [ -f /app/web/index.php ]; then \
-        # Try to use system Yii2 installation if available
-        if [ -f /usr/share/yii2/vendor/autoload.php ]; then \
-            sed -i "s|require.*vendor/autoload\.php.*|require('/usr/share/yii2/vendor/autoload.php');|g" /app/web/index.php; \
-        elif [ -f /app/vendor/autoload.php ]; then \
-            sed -i "s|require(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
-        fi; \
+        echo "Fixing autoloader path in index.php..."; \
+        # Replace the autoloader path to point to the correct location
+        sed -i "s|require(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
+        sed -i "s|require.*'/app/web/\.\./\.\./vendor/autoload\.php'|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
+        # Also handle any other common patterns
+        sed -i "s|require.*'\.\.\/\.\.\/vendor\/autoload\.php'|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
+        # Show the fixed content for debugging
+        echo "Contents of index.php after fix:"; \
+        head -10 /app/web/index.php; \
     fi
 
 EXPOSE 80

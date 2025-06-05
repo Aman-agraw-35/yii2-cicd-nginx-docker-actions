@@ -34,14 +34,36 @@ RUN chown -R www-data:www-data /app && \
     find /app -type f -exec chmod 644 {} \; && \
     chmod -R 777 /app/runtime /app/web/assets
 
-# Fix autoloader path in index.php if it exists
+# Fix autoloader path in index.php if it exists - Enhanced version
 RUN if [ -f /app/web/index.php ]; then \
-        # Try to use system Yii2 installation if available
-        if [ -f /usr/share/yii2/vendor/autoload.php ]; then \
+        echo "Fixing autoloader paths in index.php..."; \
+        # Handle multiple common autoloader path patterns
+        sed -i "s|require(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
+        sed -i "s|require_once(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require_once(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
+        sed -i "s|require '\.\.\/\.\.\/vendor\/autoload\.php'|require __DIR__ . '/../vendor/autoload.php'|g" /app/web/index.php; \
+        sed -i "s|require_once '\.\.\/\.\.\/vendor\/autoload\.php'|require_once __DIR__ . '/../vendor/autoload.php'|g" /app/web/index.php; \
+        # If system Yii2 is available and local vendor doesn't exist, use system version
+        if [ -f /usr/share/yii2/vendor/autoload.php ] && [ ! -f /app/vendor/autoload.php ]; then \
             sed -i "s|require.*vendor/autoload\.php.*|require('/usr/share/yii2/vendor/autoload.php');|g" /app/web/index.php; \
-        elif [ -f /app/vendor/autoload.php ]; then \
-            sed -i "s|require(__DIR__ . '/\.\./\.\./vendor/autoload\.php')|require(__DIR__ . '/../vendor/autoload.php')|g" /app/web/index.php; \
         fi; \
+        echo "Autoloader paths fixed."; \
+    fi
+
+# Debug: Show final autoloader setup
+RUN echo "=== Checking autoloader setup ===" && \
+    if [ -f /app/vendor/autoload.php ]; then \
+        echo "✓ Local vendor/autoload.php exists"; \
+    else \
+        echo "✗ Local vendor/autoload.php missing"; \
+    fi && \
+    if [ -f /usr/share/yii2/vendor/autoload.php ]; then \
+        echo "✓ System Yii2 autoload.php exists"; \
+    else \
+        echo "✗ System Yii2 autoload.php missing"; \
+    fi && \
+    if [ -f /app/web/index.php ]; then \
+        echo "=== index.php autoloader line ==="; \
+        grep -n "require.*autoload" /app/web/index.php || echo "No autoloader require found"; \
     fi
 
 EXPOSE 80
