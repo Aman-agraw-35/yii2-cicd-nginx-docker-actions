@@ -1,6 +1,11 @@
 - name: Setup Docker Swarm and NGINX
   hosts: web
   become: true
+  vars:
+    nginx_conf: "{{ playbook_dir }}/../nginx.conf"
+    nginx_site_available: /etc/nginx/sites-available/yii2
+    nginx_site_enabled: /etc/nginx/sites-enabled/yii2
+
   tasks:
     - name: Install required packages
       apt:
@@ -12,25 +17,37 @@
         state: present
         update_cache: yes
 
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
     - name: Start Docker service
       service:
         name: docker
         state: started
         enabled: true
 
-    - name: Initialize Docker Swarm (ignore if already initialized)
-      shell: docker swarm init || true
+    - name: Initialize Docker Swarm (ignore if already part of a swarm)
+      shell: |
+        docker info | grep "Swarm: active" || docker swarm init
+      register: swarm_init
+      changed_when: "'Swarm initialized' in swarm_init.stdout"
 
     - name: Copy nginx.conf
       copy:
-        src: ../nginx.conf
-        dest: /etc/nginx/sites-available/yii2
+        src: "{{ nginx_conf }}"
+        dest: "{{ nginx_site_available }}"
+        owner: root
+        group: root
+        mode: '0644'
       notify: Reload nginx
 
-    - name: Enable nginx site
+    - name: Enable NGINX site
       file:
-        src: /etc/nginx/sites-available/yii2
-        dest: /etc/nginx/sites-enabled/yii2
+        src: "{{ nginx_site_available }}"
+        dest: "{{ nginx_site_enabled }}"
         state: link
         force: yes
 
@@ -42,14 +59,9 @@
     - name: Test nginx config
       command: nginx -t
       register: nginx_test
-      ignore_errors: yes
+      failed_when: nginx_test.rc != 0
 
-    - name: Fail if nginx config is invalid
-      fail:
-        msg: "NGINX configuration test failed"
-      when: nginx_test.rc != 0
-
-    - name: Restart nginx
+    - name: Restart NGINX
       service:
         name: nginx
         state: restarted

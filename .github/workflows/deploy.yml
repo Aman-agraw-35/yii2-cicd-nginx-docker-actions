@@ -31,23 +31,8 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
 
-      - name: Install Ansible
-        run: sudo apt-get update && sudo apt-get install -y ansible
-
-      - name: Create inventory file
-        run: |
-          echo "[web]" > inventory.ini
-          echo "${{ secrets.EC2_HOST }} ansible_user=${{ secrets.EC2_USER }} ansible_ssh_private_key_file=key.pem" >> inventory.ini
-
-      - name: Run Ansible Playbook
-        run: |
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini ansible/playbook.yml
-
-          
       - name: Copy docker-stack.yml to EC2
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-          chmod 600 key.pem
           ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "mkdir -p ~/yii-app"
           scp -o StrictHostKeyChecking=no -i key.pem docker-stack.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/yii-app/
 
@@ -58,13 +43,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/yii-app || { echo "Directory ~/yii-app does not exist"; exit 1; }
-            
-            if [ -f docker-stack.yml ]; then
-              sudo docker pull amanagraw35/yii-frontend:latest
-              sudo docker pull amanagraw35/yii-backend:latest
-              sudo docker stack deploy -c docker-stack.yml yii-app
-            else
-              echo "docker-stack.yml file not found"
-              exit 1
-            fi
+            cd ~/yii-app || exit 1
+            sudo docker pull amanagraw35/yii-frontend:latest
+            sudo docker pull amanagraw35/yii-backend:latest
+            sudo docker stack deploy -c docker-stack.yml yii-app
