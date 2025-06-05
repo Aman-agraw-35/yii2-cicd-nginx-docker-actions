@@ -29,5 +29,5 @@ phpunit.phar
 /phpunit.xml
 
 # vagrant runtime
-/.vagrant
+/.vagrant 
 
